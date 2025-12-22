@@ -1,17 +1,52 @@
+use std::fs;
+use std::path::PathBuf;
+use std::io::prelude::*;
 use std::env;
 use std::collections::HashMap;
 
-pub mod commands;
-use commands::*;
-
+pub fn load_shortcuts() -> HashMap<String, String> {
+    let home = env::var("HOME").expect("HOME environment variable not set");
+    let path = PathBuf::from(home).join(".shortcuts");
+    let mut shortcuts = HashMap::new();
+    if path.exists() {
+        let mut file = fs::File::open(path).expect("Unable to open shortcuts file");
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).expect("Unable to read shortcuts file");
+        // Process the contents as needed
+        for line in contents.lines() {
+            //println!("{}", line);
+            let line_parts: Vec<&str> = line.splitn(2, '=').collect();
+            if line_parts.len() == 2 {
+                let key = line_parts[0].trim().to_string();
+                let mut value = line_parts[1].trim().to_string();
+                
+                // Expand ~ to home directory
+                if value.starts_with("~/") {
+                    let home = env::var("HOME").expect("HOME environment variable not set");
+                    value = value.replacen("~", &home, 1);
+                } else if value == "~" {
+                    value = env::var("HOME").expect("HOME environment variable not set");
+                }
+                
+                //println!("Key: {}, Value: {}", key, value);
+                shortcuts.insert(key, value);
+            }
+        }
+    } else {
+        // Create the file if it doesn't exist
+        fs::File::create(path).expect("Unable to create shortcuts file");
+    }
+    shortcuts
+}
 
 fn print_usage() {
     println!("goto - Navigate to saved directory shortcuts\n");
     println!("Usage:");
-    println!("  goto <shortcut>                 Navigate to a saved shortcut");
-    println!("  goto -a <shortcut>=<path>       Add current directory as a shortcut");
-    println!("  goto -l                         List all shortcuts");
-    println!("  goto -h                         Show this help message");
+    println!("  goto <shortcut>           Navigate to a saved shortcut");
+    println!("  goto -a <name>            Add current directory as a shortcut");
+    println!("  goto -a <name>=<path>     Add specified path as a shortcut");
+    println!("  goto -l                   List all shortcuts");
+    println!("  goto -h                   Show this help message");
 }
 
 fn process_list_shortcuts() {
@@ -21,36 +56,39 @@ fn process_list_shortcuts() {
     } 
 }
 
-fn process_add_shortcut(args: &Vec<String>) {
-    if args.len() != 1 {
-        eprintln!("Error: Invalid number of arguments for adding shortcut");
-        return;
-    } else {
-        let shortcut_def = &args[0];
-        let parts: Vec<&str> = shortcut_def.splitn(2, '=').collect();
+fn process_add_shortcut(arg: &str) {
+    let (name, path) = if arg.contains('=') {
+        // Parse shortcut=path format
+        let parts: Vec<&str> = arg.splitn(2, '=').collect();
         if parts.len() != 2 {
-            eprintln!("Error: Invalid shortcut definition. Use the format <shortcut>=<path>");
+            eprintln!("Error: Invalid shortcut definition. Use the format <name>=<path>");
             return;
         }
-        let shortcut = parts[0].trim();
-        let path = parts[1].trim();
+        (parts[0].trim().to_string(), parts[1].trim().to_string())
+    } else {
+        // Use current directory
+        let current_dir = env::current_dir()
+            .expect("Unable to get current directory")
+            .to_str()
+            .expect("Invalid path")
+            .to_string();
+        (arg.to_string(), current_dir)
+    };
 
-        let mut shortcuts = load_shortcuts();
-        shortcuts.insert(shortcut.to_string(), path.to_string());
+    let mut shortcuts = load_shortcuts();
+    shortcuts.insert(name.clone(), path.clone());
 
-        // Save back to file
-        let home = env::var("HOME").expect("HOME environment variable not set");
-        let file_path = std::path::PathBuf::from(home).join(".shortcuts");
-        let mut file = std::fs::File::create(file_path).expect("Unable to open shortcuts file for writing");
+    // Save back to file
+    let home = env::var("HOME").expect("HOME environment variable not set");
+    let file_path = PathBuf::from(home).join(".shortcuts");
+    let mut file = fs::File::create(file_path).expect("Unable to open shortcuts file for writing");
 
-        for (key, value) in shortcuts.iter() {
-            let line = format!("{}={}\n", key, value);
-            use std::io::Write;
-            file.write_all(line.as_bytes()).expect("Unable to write to shortcuts file");
-        }
-
-        println!("Shortcut '{}' added for path '{}'", shortcut, path); 
+    for (key, value) in shortcuts.iter() {
+        let line = format!("{}={}\n", key, value);
+        file.write_all(line.as_bytes()).expect("Unable to write to shortcuts file");
     }
+
+    println!("Shortcut '{}' added for path '{}'", name, path);
 }
 
 fn process_goto(shortcut: &String, shortcuts: &HashMap<String, String>) -> bool{
@@ -65,16 +103,9 @@ fn process_goto(shortcut: &String, shortcuts: &HashMap<String, String>) -> bool{
     false // Return false if shortcut not found
 }
 
-fn process_args(args: &mut Vec<String>) -> Option<Commands> {
+fn process_args(args: &mut Vec<String>) {
     args.remove(0); // Remove the program name
-
-    let args_str = &args.concat();
-
-    let mut command_objects = Commands {
-        raw: String::from(args_str),
-        cmds: Vec::new(),
-    };
-
+    
     if args.len() == 0 {
         //If no futher args exist print usage
         print_usage();
@@ -85,58 +116,41 @@ fn process_args(args: &mut Vec<String>) -> Option<Commands> {
     while let Some(arg) = iterator.next() {
         match arg.as_str() {
             "-h" => {
-                let cmd = Cmd {
-                    cmd_type: Cmds::Usage,
-                    args: None,
-                };
-                command_objects.cmds.push(cmd);
                 print_usage();
             }
 
             "-l" => {
-                let cmd = Cmd {
-                    cmd_type: Cmds::ListShortcuts,
-                    args: None,
-                };
-                command_objects.cmds.push(cmd);
                 process_list_shortcuts();
             }
 
             "-a" => {
-                let cmd = Cmd {
-                    cmd_type: Cmds::AddShortcut,
-                    args: match iterator.next() {
-                        Some(x) => Some(vec![x.to_string()]),
-                        None => None,
-                    },
-                };
-                if let Some(ref args) = cmd.args {
-                    process_add_shortcut(args);
+                if let Some(name) = iterator.next() {
+                    process_add_shortcut(name);
                 } else {
-                    eprintln!("Error: No shortcut provided for -a option");
+                    eprintln!("Error: No shortcut name provided for -a option");
                 }
-                command_objects.cmds.push(cmd);
             }
             _ => {
                 // If the argument is a shortcut, execute goto
                 if args.len() == 1 {
-                    process_goto(arg, &load_shortcuts());
-                    return None;
+                    if !process_goto(arg, &load_shortcuts()) {
+                        // Only print usage if shortcut not found
+                        print_usage();
+                    }
+                } else {
+                    // Multiple arguments that don't match flags
+                    print_usage();
                 }
-                // If not then print usage. 
-                print_usage();
-                return None;
             }
         }
     }
     
-    Some(command_objects) //Return Commands
 }
 
 fn main() {
     let mut args: Vec<String> = env::args().collect();
     //dbg!(args);
-    let commands = process_args(&mut args);
+    process_args(&mut args);
     //dbg!(commands);
 
 }
