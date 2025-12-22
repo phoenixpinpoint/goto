@@ -35,7 +35,7 @@ pub fn load_shortcuts() -> HashMap<String, String> {
         file.read_to_string(&mut contents).expect("Unable to read shortcuts file");
         // Process the contents as needed
         for line in contents.lines() {
-            println!("{}", line);
+            //println!("{}", line);
             let line_parts: Vec<&str> = line.splitn(2, '=').collect();
             if line_parts.len() == 2 {
                 let key = line_parts[0].trim().to_string();
@@ -49,7 +49,7 @@ pub fn load_shortcuts() -> HashMap<String, String> {
                     value = env::var("HOME").expect("HOME environment variable not set");
                 }
                 
-                println!("Key: {}, Value: {}", key, value);
+                //println!("Key: {}, Value: {}", key, value);
                 shortcuts.insert(key, value);
             }
         }

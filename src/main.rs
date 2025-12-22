@@ -1,6 +1,5 @@
 use std::env;
 use std::collections::HashMap;
-use std::process::Command;
 
 pub mod commands;
 use commands::*;
@@ -11,7 +10,10 @@ fn print_usage() {
 }
 
 fn process_list_shortcuts() {
-    // Placeholder for listing shortcuts
+   let shortcuts = load_shortcuts();
+    for (key, value) in shortcuts.iter() {
+        println!("{} = {}", key, value);
+    } 
 }
 
 fn process_add_shortcut(args: &Vec<String>) {
@@ -50,7 +52,7 @@ fn process_args(args: &mut Vec<String>) -> Option<Commands> {
     while let Some(arg) = iterator.next() {
         match arg.as_str() {
             "-h" => {
-                let mut cmd = Cmd {
+                let cmd = Cmd {
                     cmd_type: Cmds::Usage,
                     args: None,
                 };
@@ -58,15 +60,16 @@ fn process_args(args: &mut Vec<String>) -> Option<Commands> {
             }
 
             "-l" => {
-                let mut cmd = Cmd {
+                let cmd = Cmd {
                     cmd_type: Cmds::ListShortcuts,
                     args: None,
                 };
                 commandObjects.cmds.push(cmd);
+                process_list_shortcuts();
             }
 
             "-a" => {
-                let mut cmd = Cmd {
+                let cmd = Cmd {
                     cmd_type: Cmds::AddShortcut,
                     args: match iterator.next() {
                         Some(x) => Some(vec![x.to_string()]),
@@ -95,8 +98,6 @@ fn main() {
     let mut args: Vec<String> = env::args().collect();
     //dbg!(args);
     let commands = process_args(&mut args);
+    //dbg!(commands);
 
-    dbg!(commands);
-
-    load_shortcuts();
 }
