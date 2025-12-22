@@ -1,27 +1,33 @@
 use std::env;
+use std::collections::HashMap;
+use std::process::Command;
 
-#[derive(Debug)]
-enum Cmds {
-    ListShortcuts,
-    AddShortcut,
-    DeleteShortcut,
-    Goto,
-    Usage,
-}
-#[derive(Debug)]
-struct Cmd {
-    cmd_type: Cmds,
-    args: Option<Vec<String>>,
-}
+pub mod commands;
+use commands::*;
 
-#[derive(Debug)]
-struct Commands {
-    raw: String,
-    cmds: Vec<Cmd>,
-}
 
 fn print_usage() {
     println!("Usage: ");
+}
+
+fn process_list_shortcuts() {
+    // Placeholder for listing shortcuts
+}
+
+fn process_add_shortcut(args: &Vec<String>) {
+    // Placeholder for adding a shortcut
+}
+
+fn process_goto(shortcut: &String, shortcuts: &HashMap<String, String>) -> bool{
+    if let Some(path) = shortcuts.get(shortcut) {
+        // Print with special prefix so shell function can detect it
+        println!("GOTO:{}", path);
+        return true; // Return true if shortcut found
+    } else {
+        eprintln!("Shortcut not found: {}", shortcut);
+    }
+
+    false // Return false if shortcut not found
 }
 
 fn process_args(args: &mut Vec<String>) -> Option<Commands> {
@@ -70,6 +76,12 @@ fn process_args(args: &mut Vec<String>) -> Option<Commands> {
                 commandObjects.cmds.push(cmd);
             }
             _ => {
+                // If the argument is a shortcut, execute goto
+                if(args.len() == 1) {
+                    process_goto(arg, &load_shortcuts());
+                    return None;
+                }
+                // If not then print usage. 
                 print_usage();
                 return None;
             }
@@ -85,4 +97,6 @@ fn main() {
     let commands = process_args(&mut args);
 
     dbg!(commands);
+
+    load_shortcuts();
 }
