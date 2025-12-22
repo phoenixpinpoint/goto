@@ -6,7 +6,12 @@ use commands::*;
 
 
 fn print_usage() {
-    println!("Usage: ");
+    println!("goto - Navigate to saved directory shortcuts\n");
+    println!("Usage:");
+    println!("  goto <shortcut>       Navigate to a saved shortcut");
+    println!("  goto -a <name>        Add current directory as a shortcut");
+    println!("  goto -l               List all shortcuts");
+    println!("  goto -h               Show this help message");
 }
 
 fn process_list_shortcuts() {
@@ -57,6 +62,7 @@ fn process_args(args: &mut Vec<String>) -> Option<Commands> {
                     args: None,
                 };
                 commandObjects.cmds.push(cmd);
+                print_usage();
             }
 
             "-l" => {
