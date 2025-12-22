@@ -41,10 +41,22 @@ A simple terminal program to navigate to locations on a system using shortcuts.
 ## Usage
 
 ### Add a shortcut
+
+Save the current directory:
 ```bash
 goto -a shortcut_name
 ```
-This will save your current directory as `shortcut_name`.
+
+Or save a specific path:
+```bash
+goto -a shortcut_name=/path/to/directory
+```
+
+You can use `~` in paths:
+```bash
+goto -a home=~
+goto -a projects=~/code/myprojects
+```
 
 ### List shortcuts
 ```bash
@@ -54,6 +66,11 @@ goto -l
 ### Navigate to a shortcut
 ```bash
 goto shortcut_name
+```
+
+### Show help
+```bash
+goto -h
 ```
 
 ### Configuration
