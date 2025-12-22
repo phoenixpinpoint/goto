@@ -8,10 +8,10 @@ use commands::*;
 fn print_usage() {
     println!("goto - Navigate to saved directory shortcuts\n");
     println!("Usage:");
-    println!("  goto <shortcut>       Navigate to a saved shortcut");
-    println!("  goto -a <name>        Add current directory as a shortcut");
-    println!("  goto -l               List all shortcuts");
-    println!("  goto -h               Show this help message");
+    println!("  goto <shortcut>                 Navigate to a saved shortcut");
+    println!("  goto -a <shortcut>=<path>       Add current directory as a shortcut");
+    println!("  goto -l                         List all shortcuts");
+    println!("  goto -h                         Show this help message");
 }
 
 fn process_list_shortcuts() {
@@ -22,7 +22,35 @@ fn process_list_shortcuts() {
 }
 
 fn process_add_shortcut(args: &Vec<String>) {
-    // Placeholder for adding a shortcut
+    if args.len() != 1 {
+        eprintln!("Error: Invalid number of arguments for adding shortcut");
+        return;
+    } else {
+        let shortcut_def = &args[0];
+        let parts: Vec<&str> = shortcut_def.splitn(2, '=').collect();
+        if parts.len() != 2 {
+            eprintln!("Error: Invalid shortcut definition. Use the format <shortcut>=<path>");
+            return;
+        }
+        let shortcut = parts[0].trim();
+        let path = parts[1].trim();
+
+        let mut shortcuts = load_shortcuts();
+        shortcuts.insert(shortcut.to_string(), path.to_string());
+
+        // Save back to file
+        let home = env::var("HOME").expect("HOME environment variable not set");
+        let file_path = std::path::PathBuf::from(home).join(".shortcuts");
+        let mut file = std::fs::File::create(file_path).expect("Unable to open shortcuts file for writing");
+
+        for (key, value) in shortcuts.iter() {
+            let line = format!("{}={}\n", key, value);
+            use std::io::Write;
+            file.write_all(line.as_bytes()).expect("Unable to write to shortcuts file");
+        }
+
+        println!("Shortcut '{}' added for path '{}'", shortcut, path); 
+    }
 }
 
 fn process_goto(shortcut: &String, shortcuts: &HashMap<String, String>) -> bool{
@@ -42,7 +70,7 @@ fn process_args(args: &mut Vec<String>) -> Option<Commands> {
 
     let args_str = &args.concat();
 
-    let mut commandObjects = Commands {
+    let mut command_objects = Commands {
         raw: String::from(args_str),
         cmds: Vec::new(),
     };
@@ -61,7 +89,7 @@ fn process_args(args: &mut Vec<String>) -> Option<Commands> {
                     cmd_type: Cmds::Usage,
                     args: None,
                 };
-                commandObjects.cmds.push(cmd);
+                command_objects.cmds.push(cmd);
                 print_usage();
             }
 
@@ -70,7 +98,7 @@ fn process_args(args: &mut Vec<String>) -> Option<Commands> {
                     cmd_type: Cmds::ListShortcuts,
                     args: None,
                 };
-                commandObjects.cmds.push(cmd);
+                command_objects.cmds.push(cmd);
                 process_list_shortcuts();
             }
 
@@ -82,11 +110,16 @@ fn process_args(args: &mut Vec<String>) -> Option<Commands> {
                         None => None,
                     },
                 };
-                commandObjects.cmds.push(cmd);
+                if let Some(ref args) = cmd.args {
+                    process_add_shortcut(args);
+                } else {
+                    eprintln!("Error: No shortcut provided for -a option");
+                }
+                command_objects.cmds.push(cmd);
             }
             _ => {
                 // If the argument is a shortcut, execute goto
-                if(args.len() == 1) {
+                if args.len() == 1 {
                     process_goto(arg, &load_shortcuts());
                     return None;
                 }
@@ -97,7 +130,7 @@ fn process_args(args: &mut Vec<String>) -> Option<Commands> {
         }
     }
     
-    Some(commandObjects) //Return Commands
+    Some(command_objects) //Return Commands
 }
 
 fn main() {
