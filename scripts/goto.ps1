@@ -7,12 +7,15 @@
 
 function goto {
     # Determine the path to the goto executable
-    # First check if it's in the same directory as this script
-    $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
-    $gotoExe = Join-Path $scriptPath "goto.exe"
-    
-    # If not found in script directory, assume it's in PATH
-    if (-not (Test-Path $gotoExe)) {
+    # When dot-sourced, $MyInvocation.MyCommand.Path is null, so use $PSScriptRoot instead
+    if ($PSScriptRoot) {
+        $gotoExe = Join-Path $PSScriptRoot "goto.exe"
+        # If not found in script directory, assume it's in PATH
+        if (-not (Test-Path $gotoExe)) {
+            $gotoExe = "goto.exe"
+        }
+    } else {
+        # Fallback: just use goto.exe from PATH
         $gotoExe = "goto.exe"
     }
     

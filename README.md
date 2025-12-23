@@ -2,6 +2,9 @@
 
 A simple terminal program to navigate to locations on a system using shortcuts.
 
+**Supported Shells:** bash, zsh, PowerShell  
+**Note:** Windows Command Prompt (CMD) is not supported due to limitations with the built-in `goto` command.
+
 ## Installation
 
 ### Linux/macOS
@@ -82,10 +85,6 @@ Configure your shell to use the goto wrapper:
    ```powershell
    $PROFILE
    ```
-
-   **For Windows Command Prompt (CMD)**:
-   
-   If you used the install script, `goto.bat` is already installed and ready to use. Otherwise, copy both `goto.exe` and `scripts\goto.bat` to a directory in your PATH.
 
 ### Restart Your Shell
 
