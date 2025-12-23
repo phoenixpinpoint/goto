@@ -4,9 +4,16 @@ use std::io::prelude::*;
 use std::env;
 use std::collections::HashMap;
 
+fn get_home_dir() -> String {
+    // Try HOME first (Unix/Linux/macOS), then USERPROFILE (Windows)
+    env::var("HOME")
+        .or_else(|_| env::var("USERPROFILE"))
+        .expect("Neither HOME nor USERPROFILE environment variable is set")
+}
+
 pub fn load_shortcuts() -> HashMap<String, String> {
-    let home = env::var("HOME").expect("HOME environment variable not set");
-    let path = PathBuf::from(home).join(".shortcuts");
+    let home = get_home_dir();
+    let path = PathBuf::from(home.clone()).join(".shortcuts");
     let mut shortcuts = HashMap::new();
     if path.exists() {
         let mut file = fs::File::open(path).expect("Unable to open shortcuts file");
@@ -22,10 +29,10 @@ pub fn load_shortcuts() -> HashMap<String, String> {
                 
                 // Expand ~ to home directory
                 if value.starts_with("~/") {
-                    let home = env::var("HOME").expect("HOME environment variable not set");
+                    let home = get_home_dir();
                     value = value.replacen("~", &home, 1);
                 } else if value == "~" {
-                    value = env::var("HOME").expect("HOME environment variable not set");
+                    value = get_home_dir();
                 }
                 
                 //println!("Key: {}, Value: {}", key, value);
@@ -79,7 +86,7 @@ fn process_add_shortcut(arg: &str) {
     shortcuts.insert(name.clone(), path.clone());
 
     // Save back to file
-    let home = env::var("HOME").expect("HOME environment variable not set");
+    let home = get_home_dir();
     let file_path = PathBuf::from(home).join(".shortcuts");
     let mut file = fs::File::create(file_path).expect("Unable to open shortcuts file for writing");
 
